@@ -1,7 +1,5 @@
 # TODO
 
-- Pick random
-
 - Cross validation 
     - Fill
         - find best k for knn imputation
