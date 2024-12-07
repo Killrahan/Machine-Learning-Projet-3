@@ -230,17 +230,16 @@ if __name__ == '__main__':
 
     print("Main file.")
     LS_path = os.path.join('./', 'LS')
-    my_set = build_dataset(300, 3000, 3500,method = "knn_imput" ,Random=True)
+    my_set = build_dataset(300, 3500, 3500,method = "knn_imput" ,Random=True)
     X_train = my_set[0]
     y_train = my_set[1]
     X_validation = my_set[2]
     y_validation = my_set[3]
     X_test = my_set[4]
     #test on K-neighbors : 
-    clf = DecisionTreeClassifier(max_depth=5)
+    clf = KNeighborsClassifier(n_neighbors = 5)
     clf.fit(X_train, y_train)
-    y_predict = clf.predict(X_validation)
-    print(accuracy_score(y_predict,y_validation))
+    y_predict = clf.predict(X_test)
 
-    #toy_script.write_submission(y_predict)
+    toy_script.write_submission(y_predict)
     
