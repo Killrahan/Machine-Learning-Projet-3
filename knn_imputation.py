@@ -13,7 +13,6 @@ def fill(dataset):
         array_like: the dataset, but with 
     """
 
-    # then, deal with partially missing lines in all sensors
     for f in range(len(dataset)):
         impute = KNNImputer(n_neighbors=1, missing_values=-999999.99)
         dataset[f] = impute.fit_transform(dataset[f])
