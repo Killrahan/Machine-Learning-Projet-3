@@ -104,7 +104,7 @@ def fill_average(dataset, indexes):
     return dataset
 
 
-def build_dataset(useless_th, nb_series, nb_tot, method = "average"):
+def build_dataset(useless_th, nb_series, nb_tot, method = "average",Random=False):
     """
     This function get rid of useless sensors, fill missing time series using either an
     averaging method or KNN_imputation and build the sets X_train, y_train, X_validation
@@ -145,9 +145,7 @@ def build_dataset(useless_th, nb_series, nb_tot, method = "average"):
 
     # Build sets and fill missing data :
     X_train = np.zeros((nb_series, (len(f_indexes)*512)))
-    y_train = np.loadtxt(os.path.join(LS_path, 'activity_Id.txt'))[:nb_series]
     X_validation = np.zeros((nb_tot - nb_series, (len(f_indexes)*512)))
-    y_validation = np.loadtxt(os.path.join(LS_path, 'activity_Id.txt'))[nb_series:]
     X_test = np.zeros((nb_tot, (len(f_indexes) * 512)))
       
     if  method == "average": 
@@ -169,19 +167,62 @@ def build_dataset(useless_th, nb_series, nb_tot, method = "average"):
 
 
     index = 0
-    for f in f_indexes:
-        print(f"f = {f} \n")
-        X_train[:, (index)*512:(index+1)*512] = data_array[index][:nb_series]
-        X_validation[:, (index)*512:(index+1)*512] = data_array[index][nb_series:]
-        data = np.loadtxt(os.path.join(TS_path, 'TS_sensor_{}.txt'.format(f)))
-        X_test[:,(index)*512:(index+1)*512] = data
-        index += 1
+    if not Random: 
+        y_train = np.loadtxt(os.path.join(LS_path, 'activity_Id.txt'))[:nb_series]
+        y_validation = np.loadtxt(os.path.join(LS_path, 'activity_Id.txt'))[nb_series:]
+        for f in f_indexes:
+            print(f"f = {f} \n")
+            X_train[:, (index)*512:(index+1)*512] = data_array[index][:nb_series]
+            X_validation[:, (index)*512:(index+1)*512] = data_array[index][nb_series:]
+            data = np.loadtxt(os.path.join(TS_path, 'TS_sensor_{}.txt'.format(f)))
+            X_test[:,(index)*512:(index+1)*512] = data
+            index += 1
+    if Random: 
+        y = np.loadtxt(os.path.join(LS_path, 'activity_Id.txt'))
+        train_line = np.random.choice(3500,nb_series,replace=False)
+        train_line = np.sort(train_line)
+        print(f"Train line : {train_line} \n")
+        validation_line = []
+        y_train = []
+        y_validation = []
+        print(f"Validation line : {validation_line}")
+        for j in range(3500):
+            if not(j in train_line):
+                validation_line.append(j)
+                y_validation.append(y[j])
+            else:
+                y_train.append(y[j])
+        print(f"y_train = {y_train} \n")
+        print(f"y_validation = {y_validation}")
+        print(f"Validation line : {validation_line}")
+    
 
-    print('X_train size: {}.'.format(X_train.shape))
-    print('y_train size: {}.'.format(y_train.shape))
-    print('X_validation size: {}.'.format(X_validation.shape))
-    print('y_validation size: {}.'.format(y_validation.shape))
 
+        """At this point train_line contains nb_series line indexes and 
+        validation_line nb_tot - nb_series lines indexes."""
+
+        for f in f_indexes:
+            k = 0
+            print(f"f = {f} \n")
+            for line_index in train_line:
+                X_train[:,(index)*512:(index+1)*512][k] = data_array[index][line_index]
+
+                k+=1
+            k = 0
+            for line_index in validation_line:
+                X_validation[:,(index)*512:(index+1)*512][k] = data_array[index][line_index]
+                k+=1
+            data = np.loadtxt(os.path.join(TS_path, 'TS_sensor_{}.txt'.format(f)))
+            X_test[:,(index)*512:(index+1)*512] = data
+            index+=1
+
+
+    print('X_train size: {}.'.format(np.shape(X_train)))
+    print('y_train size: {}.'.format(np.shape(y_train)))
+    print('X_validation size: {}.'.format(np.shape(X_validation)))
+    print('y_validation size: {}.'.format(np.shape(y_validation)))
+    print('X_test size : {}.'.format(np.shape(X_test)))
+    print(f"X_train = {X_train}")
     return X_train, y_train, X_validation, y_validation, X_test
 
 
@@ -189,14 +230,14 @@ if __name__ == '__main__':
 
     print("Main file.")
     LS_path = os.path.join('./', 'LS')
-    my_set = build_dataset(300, 3500, 3500,method="knn_imput")
+    my_set = build_dataset(300, 3500, 3500,method = "knn_imput" ,Random=True)
     X_train = my_set[0]
     y_train = my_set[1]
     X_validation = my_set[2]
     y_validation = my_set[3]
     X_test = my_set[4]
     #test on K-neighbors : 
-    clf = KNeighborsClassifier(n_neighbors=5)
+    clf = KNeighborsClassifier(n_neighbors = 5)
     clf.fit(X_train, y_train)
     y_predict = clf.predict(X_test)
 
