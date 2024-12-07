@@ -6,6 +6,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.tree import DecisionTreeClassifier
 import toy_script 
 import os
+from knn_imputation import fill as fill_knn
 """
 This file is the file where we built machine learning's method to predict the
 activity. 
@@ -53,63 +54,57 @@ def number_missing():
     return missing_array
 
 
-def fill_missing(dataset, indexes, Average=True, KNN_imput=False):
+def fill_average(dataset, indexes):
     """
-    Fill the missing values in a dataset.
+    Fill the missing values in a sensor dataset.
     args : 
     dataset : the dataset to be modified. (1 txt file).
     indexes : the indexes of line of time series that are either partially missing or
               fully_missing. indexes[0] contains all time series that are fully missing
               and indexes[1] contains all time series that are partially missing.
-    Average : If put to true use Average method to fill. 
-    KNN_imput : If put to true use KNN_imput to fill. 
-
+    method: defines which method to use.  average or knn_imput
     return : a modified dataset.
     """
-    if Average:
-        dataset_mean = []
+    dataset_mean = []
 
-        for i in range(len(dataset)):
-            if not (-999999.99 in dataset[i]):
-                dataset_mean.append(np.average(dataset[i]))
+    for i in range(len(dataset)):
+        if not (-999999.99 in dataset[i]):
+            dataset_mean.append(np.average(dataset[i]))
 
-        dataset_mean = np.average(dataset_mean)
-        # print("Mean of the dataset : ", dataset_mean)
+    dataset_mean = np.average(dataset_mean)
+    # print("Mean of the dataset : ", dataset_mean)
 
-        for i in range(len(dataset)):
-            # Deal with fully missing time series.
-            if i in indexes[0]:
-                for j in range(len(dataset[i])):
-                    dataset[i][j] = dataset_mean
+    for i in range(len(dataset)):
+        # Deal with fully missing time series.
+        if i in indexes[0]:
+            for j in range(len(dataset[i])):
+                dataset[i][j] = dataset_mean
 
-            elif i in indexes[1]:
-                """if (i == 944):
-                    print(f"index table : {indexes[1]} \n")
-                    print(f"dataset line : {dataset[i]} \n")"""
-                
-                non_missing = []
+        elif i in indexes[1]:
+            """if (i == 944):
+                print(f"index table : {indexes[1]} \n")
+                print(f"dataset line : {dataset[i]} \n")"""
+            
+            non_missing = []
 
-                for j in range(len(dataset[i])):
-                    if dataset[i][j] != -999999.99:
-                        non_missing.append(dataset[i][j])
+            for j in range(len(dataset[i])):
+                if dataset[i][j] != -999999.99:
+                    non_missing.append(dataset[i][j])
 
-                """if len(non_missing) < 1:
-                    print(f"empty non_missing for i = {i}\n")"""
+            """if len(non_missing) < 1:
+                print(f"empty non_missing for i = {i}\n")"""
 
-                average = np.average(non_missing)
-                # print(f"average = {average}")
+            average = np.average(non_missing)
+            # print(f"average = {average}")
 
-                for j in range(len(dataset[i])):
-                    if dataset[i][j] == -999999.99:
-                        dataset[i][j] = average
-
-    elif KNN_imput == True:
-        pass  # to implement later.
+            for j in range(len(dataset[i])):
+                if dataset[i][j] == -999999.99:
+                    dataset[i][j] = average
 
     return dataset
 
 
-def build_dataset(useless_th, nb_series, nb_tot, Average=True, KNN_imput=False):
+def build_dataset(useless_th, nb_series, nb_tot, method = "average"):
     """
     This function get rid of useless sensors, fill missing time series using either an
     averaging method or KNN_imputation and build the sets X_train, y_train, X_validation
@@ -117,15 +112,14 @@ def build_dataset(useless_th, nb_series, nb_tot, Average=True, KNN_imput=False):
 
     Args : 
     useless_th : number of missing series require to toss a sensor data. 
-    Average : If put to true use Average method to fill. 
-    KNN_imput : If put to true use KNN_imput to fill. 
     nb_series : Number of time_series we want to put in the training set.
     nb_tot : number of time series in the original dataset. 
+    method : method to use to fill the fissing data (average or knn_imput)
 
     return : [X_train, y_train, X_validation, y_validation]
     """
-    if (Average == True and KNN_imput == True) or (Average == False and KNN_imput == False):
-        raise Exception("Choose one mode or the other.")
+    if not (method == "average" or method == "knn_imput"):
+        raise Exception("Method shoud be average or knn_imput")
 
     if not isinstance(useless_th, int):
         raise Exception("Invalid Threshold.")
@@ -155,13 +149,24 @@ def build_dataset(useless_th, nb_series, nb_tot, Average=True, KNN_imput=False):
     X_validation = np.zeros((nb_tot - nb_series, (len(f_indexes)*512)))
     y_validation = np.loadtxt(os.path.join(LS_path, 'activity_Id.txt'))[nb_series:]
     X_test = np.zeros((nb_tot, (len(f_indexes) * 512)))
-        
-    data_array = []
-    for f in f_indexes:
-        data_curr = np.loadtxt(os.path.join(
-            LS_path, 'LS_sensor_{}.txt'.format(f)))
+      
+    if  method == "average": 
+        data_array = []
+        for f in f_indexes:
+            data_curr = np.loadtxt(os.path.join(
+                LS_path, 'LS_sensor_{}.txt'.format(f)))
 
-        data_array.append(fill_missing(data_curr, [missing_array[f-2][2], missing_array[f-2][3]]))
+            data_array.append(fill_average(data_curr, [missing_array[f-2][2], missing_array[f-2][3]]))
+            
+    if method == "knn_imput":
+        data_array = []
+        for f in f_indexes:
+            data_curr = np.loadtxt(os.path.join(LS_path,'LS_sensor_{}.txt'.format(f)))
+            
+            data_array.append(data_curr)
+
+        data_array = fill_knn(data_array)
+
 
     index = 0
     for f in f_indexes:
@@ -184,7 +189,7 @@ if __name__ == '__main__':
 
     print("Main file.")
     LS_path = os.path.join('./', 'LS')
-    my_set = build_dataset(300, 3500, 3500)
+    my_set = build_dataset(300, 3500, 3500,method="knn_imput")
     X_train = my_set[0]
     y_train = my_set[1]
     X_validation = my_set[2]

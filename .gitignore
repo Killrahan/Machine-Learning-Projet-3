@@ -1,4 +1,5 @@
-/LS
-/TS
+LS/
+TS/
 example_submission.csv
 *.pdf
+__pycache__/
