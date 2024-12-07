@@ -2,7 +2,7 @@
 
 - Pick random
 
-- Better solution for filling the data (knn imputation)
+- <u>Better solution for filling the data (knn imputation)</u>
 
 - Cross validation 
     - Fill
