@@ -4,8 +4,7 @@ import os
 
 def deal_outliers(dataset,Z_th):
     """
-    Replace Outliers by missing values that are then going to be replaced by mean of next and previous
-    points.
+    Replace Outliers by the median of the time series
 
     args : 
     dataset : a sensor txt file. 
@@ -24,17 +23,7 @@ def deal_outliers(dataset,Z_th):
                     Z_score = (dataset[line][j] - curr_mean)/(curr_std)
                     if abs(Z_score) > Z_th:
                         nb_changed += 1
-                        #Using average of neighbors point : 
-                        """local_change+=1
-                        if j > 0 and j < len(dataset[line]) - 1:
-                            dataset[line][j] = (dataset[line][j-1]+dataset[line][j+1])/2
-                        if j == 0:
-                            dataset[line][j] = (dataset[line][j+1] + dataset[line][j+2])/2
-                        if j == len(dataset[line]) - 1:
-                            dataset[line][j] = (dataset[line][j-1] + dataset[line][j-2])/2"""
-                        #Using median (best I think). 
                         dataset[line][j] = np.median(dataset[line])
-    print(f"number of values changed in this dataset = {nb_changed} \n")
 
 if __name__ == '__main__':
     print("main")
