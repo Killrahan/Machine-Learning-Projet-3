@@ -4,9 +4,11 @@ import scipy
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.tree import DecisionTreeClassifier
-import toy_script 
+import toy_script
 import os
 from knn_imputation import fill as fill_knn
+from sklearn.metrics import pairwise_distances
+
 """
 This file is the file where we built machine learning's method to predict the
 activity. 
@@ -84,7 +86,7 @@ def fill_average(dataset, indexes):
             """if (i == 944):
                 print(f"index table : {indexes[1]} \n")
                 print(f"dataset line : {dataset[i]} \n")"""
-            
+
             non_missing = []
 
             for j in range(len(dataset[i])):
@@ -104,7 +106,7 @@ def fill_average(dataset, indexes):
     return dataset
 
 
-def build_dataset(useless_th, nb_series, nb_tot, method = "average",Random=False):
+def build_dataset(useless_th, nb_series, nb_tot):
     """
     This function get rid of useless sensors, fill missing time series using either an
     averaging method or KNN_imputation and build the sets X_train, y_train, X_validation
@@ -118,8 +120,6 @@ def build_dataset(useless_th, nb_series, nb_tot, method = "average",Random=False
 
     return : [X_train, y_train, X_validation, y_validation]
     """
-    if not (method == "average" or method == "knn_imput"):
-        raise Exception("Method shoud be average or knn_imput")
 
     if not isinstance(useless_th, int):
         raise Exception("Invalid Threshold.")
@@ -133,7 +133,6 @@ def build_dataset(useless_th, nb_series, nb_tot, method = "average",Random=False
     # Select the sensor we keep : (NB : for the moment only average method is built).
 
     missing_array = number_missing()
-    # print(f"missing_array = {missing_array}")
     f_indexes = []
     f_index = 2
     for i in missing_array:
@@ -141,81 +140,59 @@ def build_dataset(useless_th, nb_series, nb_tot, method = "average",Random=False
             f_indexes.append(f_index)
         f_index += 1
     f_index = 0
-    # print(f"f_indexes = {f_indexes}")
 
     # Build sets and fill missing data :
-    X_train = np.zeros((nb_series, (len(f_indexes)*512)))
-    X_validation = np.zeros((nb_tot - nb_series, (len(f_indexes)*512)))
-    X_test = np.zeros((nb_tot, (len(f_indexes) * 512)))
-      
-    if  method == "average": 
-        data_array = []
-        for f in f_indexes:
-            data_curr = np.loadtxt(os.path.join(
-                LS_path, 'LS_sensor_{}.txt'.format(f)))
+    X_train = np.zeros((nb_series, len(f_indexes),512))
+    X_validation = np.zeros((nb_tot - nb_series, len(f_indexes),512))
+    X_test = np.zeros((nb_tot, len(f_indexes) , 512))
 
-            data_array.append(fill_average(data_curr, [missing_array[f-2][2], missing_array[f-2][3]]))
-            
-    if method == "knn_imput":
-        data_array = []
-        for f in f_indexes:
-            data_curr = np.loadtxt(os.path.join(LS_path,'LS_sensor_{}.txt'.format(f)))
-            
-            data_array.append(data_curr)
+    data_array = []
+    for f in f_indexes:
+        data_curr = np.loadtxt(os.path.join(
+            LS_path, 'LS_sensor_{}.txt'.format(f)))
 
-        data_array = fill_knn(data_array)
+        data_array.append(data_curr)
 
+    data_array = fill_knn(data_array)
 
     index = 0
-    if not Random: 
-        y_train = np.loadtxt(os.path.join(LS_path, 'activity_Id.txt'))[:nb_series]
-        y_validation = np.loadtxt(os.path.join(LS_path, 'activity_Id.txt'))[nb_series:]
-        for f in f_indexes:
-            print(f"f = {f} \n")
-            X_train[:, (index)*512:(index+1)*512] = data_array[index][:nb_series]
-            X_validation[:, (index)*512:(index+1)*512] = data_array[index][nb_series:]
-            data = np.loadtxt(os.path.join(TS_path, 'TS_sensor_{}.txt'.format(f)))
-            X_test[:,(index)*512:(index+1)*512] = data
-            index += 1
-    if Random: 
-        y = np.loadtxt(os.path.join(LS_path, 'activity_Id.txt'))
-        train_line = np.random.choice(3500,nb_series,replace=False)
-        train_line = np.sort(train_line)
-        print(f"Train line : {train_line} \n")
-        validation_line = []
-        y_train = []
-        y_validation = []
-        print(f"Validation line : {validation_line}")
-        for j in range(3500):
-            if not(j in train_line):
-                validation_line.append(j)
-                y_validation.append(y[j])
-            else:
-                y_train.append(y[j])
-        print(f"y_train = {y_train} \n")
-        print(f"y_validation = {y_validation}")
-        print(f"Validation line : {validation_line}")
-    
 
+    y = np.loadtxt(os.path.join(LS_path, 'activity_Id.txt'))
+    train_line = np.random.choice(3500, nb_series, replace=False)
+    train_line = np.sort(train_line)
+    print(f"Train line : {train_line} \n")
+    validation_line = []
+    y_train = []
+    y_validation = []
+    print(f"Validation line : {validation_line}")
+    for j in range(3500):
+        if not (j in train_line):
+            validation_line.append(j)
+            y_validation.append(y[j])
+        else:
+            y_train.append(y[j])
+    print(f"y_train = {y_train} \n")
+    print(f"y_validation = {y_validation}")
+    print(f"Validation line : {validation_line}")
 
-        """At this point train_line contains nb_series line indexes and 
-        validation_line nb_tot - nb_series lines indexes."""
+    """At this point train_line contains nb_series line indexes and 
+    validation_line nb_tot - nb_series lines indexes."""
 
-        for f in f_indexes:
-            k = 0
-            print(f"f = {f} \n")
-            for line_index in train_line:
-                X_train[:,(index)*512:(index+1)*512][k] = data_array[index][line_index]
+    for f in f_indexes:
+        k = 0
+        print(f"f = {f} \n")
+        for line_index in train_line:
+            X_train[k][index] = data_array[index][line_index]
 
-                k+=1
-            k = 0
-            for line_index in validation_line:
-                X_validation[:,(index)*512:(index+1)*512][k] = data_array[index][line_index]
-                k+=1
-            data = np.loadtxt(os.path.join(TS_path, 'TS_sensor_{}.txt'.format(f)))
-            X_test[:,(index)*512:(index+1)*512] = data
-            index+=1
-
+            k += 1
+        k = 0
+        for line_index in validation_line:
+            X_validation[k][index] = data_array[index][line_index]
+            k += 1
+        data = np.loadtxt(os.path.join(TS_path, 'TS_sensor_{}.txt'.format(f)))
+        for line_index in range(nb_tot):
+            X_test[line_index][index] = data[line_index]
+        index += 1
 
     print('X_train size: {}.'.format(np.shape(X_train)))
     print('y_train size: {}.'.format(np.shape(y_train)))
@@ -230,16 +207,23 @@ if __name__ == '__main__':
 
     print("Main file.")
     LS_path = os.path.join('./', 'LS')
-    my_set = build_dataset(300, 3500, 3500,method = "knn_imput" ,Random=True)
+    my_set = build_dataset(300, 3500, 3500)
     X_train = my_set[0]
     y_train = my_set[1]
     X_validation = my_set[2]
     y_validation = my_set[3]
     X_test = my_set[4]
-    #test on K-neighbors : 
-    clf = KNeighborsClassifier(n_neighbors = 5)
-    clf.fit(X_train, y_train)
-    y_predict = clf.predict(X_test)
+    # test on K-neighbors :
+    distances = pairwise_distances(X_train.reshape(len(X_train), -1), metric='euclidean')
+    clf = KNeighborsClassifier(n_neighbors=5,metric='precomputed')
+    clf.fit(distances, y_train)
+    
+    pairwise_distances_test = pairwise_distances(
+    X_test.reshape(len(X_test), -1),  # Flatten test points
+    X_train.reshape(len(X_train), -1),   # Flatten training points
+    metric='euclidean'                   # Use the same metric as for training
+)
+    
+    y_predict = clf.predict(pairwise_distances_test)
 
     toy_script.write_submission(y_predict)
-    
