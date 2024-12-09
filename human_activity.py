@@ -8,6 +8,7 @@ import toy_script
 import os
 from knn_imputation import fill as fill_knn
 from sklearn.metrics import pairwise_distances
+from tensorflow.keras import layers, models
 
 """
 This file is the file where we built machine learning's method to predict the
@@ -193,6 +194,10 @@ def build_dataset(useless_th, nb_series, nb_tot):
         for line_index in range(nb_tot):
             X_test[line_index][index] = data[line_index]
         index += 1
+        
+    X_train = X_train.transpose((0,2,1))
+    X_validation = X_validation.transpose((0,2,1))
+    X_test = X_test.transpose((0,2,1))
 
     print('X_train size: {}.'.format(np.shape(X_train)))
     print('y_train size: {}.'.format(np.shape(y_train)))
@@ -203,27 +208,45 @@ def build_dataset(useless_th, nb_series, nb_tot):
     return X_train, y_train, X_validation, y_validation, X_test
 
 
+def create_cnn(input_shape, num_classes):
+    model = models.Sequential([
+        layers.Conv2D(32, (3, 3), activation='relu', input_shape=input_shape),
+        layers.MaxPooling2D((2, 2)),
+        layers.Conv2D(64, (3, 3), activation='relu'),
+        layers.MaxPooling2D((2, 2)),
+        layers.Conv2D(128, (3, 3), activation='relu'),
+        layers.Flatten(),
+        layers.Dense(128, activation='relu'),
+        layers.Dropout(0.5),
+        layers.Dense(num_classes, activation='softmax')
+    ])
+    return model
+
 if __name__ == '__main__':
 
+    n_learn = int(0.2*3500)
     print("Main file.")
     LS_path = os.path.join('./', 'LS')
-    my_set = build_dataset(300, 3500, 3500)
+    my_set = build_dataset(3500, n_learn, 3500)
     X_train = my_set[0]
     y_train = my_set[1]
     X_validation = my_set[2]
     y_validation = my_set[3]
     X_test = my_set[4]
-    # test on K-neighbors :
-    distances = pairwise_distances(X_train.reshape(len(X_train), -1), metric='euclidean')
-    clf = KNeighborsClassifier(n_neighbors=5,metric='precomputed')
-    clf.fit(distances, y_train)
     
-    pairwise_distances_test = pairwise_distances(
-    X_test.reshape(len(X_test), -1),  # Flatten test points
-    X_train.reshape(len(X_train), -1),   # Flatten training points
-    metric='euclidean'                   # Use the same metric as for training
-)
     
-    y_predict = clf.predict(pairwise_distances_test)
+    # reshape data to fit in the CNN
+    X_train = X_train.reshape((n_learn,512,31,1))
+    X_validation = X_validation.reshape((3500-n_learn,512,31,1))
+    X_test = X_test.reshape((3500,512,31,1))
+    
+    model = create_cnn((512,32,1),14)
+    
+    model.compile(optimizer='adam',loss='sparse_categorical_crossentropy',metrics=['accuracy'])
+    
+    model.fit(X_train,y_train,epochs = 20, batch_size = 32, validation_split = 0.2, verbose = 1)
+    
+    test_loss, test_accuracy = model.evaluate(X_test, y_, verbose=1)
+    print(test_loss)
+    print(test_accuracy)
 
-    toy_script.write_submission(y_predict)
