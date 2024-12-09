@@ -11,6 +11,9 @@ from knn_imputation import fill as fill_knn
 from sklearn.neural_network import MLPClassifier
 from sklearn.neural_network import MLPRegressor
 from sklearn.svm import SVC
+from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import classification_report
+
 import Deal_Outliers
 """
 This file is the file where we built machine learning's method to predict the
@@ -57,6 +60,23 @@ def number_missing():
             [fully_missing, partially_missing, fully_indexes, partially_indexes])
 
     return missing_array
+
+
+def get_subject_sensors(subject_array, subject_id):
+    """
+    Return indexex of time series associated to a particular subject. 
+    """
+    index = 0
+    index_array = []
+    for subject in subject_array:
+        if subject == subject_id:
+            index_array.append(index)
+
+        index+=1
+
+    return index_array
+
+
 
 
 def fill_average(dataset, indexes):
@@ -109,7 +129,7 @@ def fill_average(dataset, indexes):
     return dataset
 
 
-def build_dataset(useless_th, nb_series, nb_tot, Z_th, method="average", Random=False):
+def build_dataset(useless_th, nb_subject, nb_tot, Z_th, method="average"):
     """
     This function get rid of useless sensors, fill missing time series using either an
     averaging method or KNN_imputation and build the sets X_train, y_train, X_validation
@@ -117,8 +137,8 @@ def build_dataset(useless_th, nb_series, nb_tot, Z_th, method="average", Random=
 
     Args : 
     useless_th : number of missing series require to toss a sensor data. 
-    nb_series : Number of time_series we want to put in the training set.
-    nb_tot : number of time series in the original dataset. 
+    nb_subject : number of subjects that will be used to create the learning set. 
+    nb_tot : number of subjects. 
     method : method to use to fill the fissing data (average or knn_imput)
 
     return : [X_train, y_train, X_validation, y_validation]
@@ -129,14 +149,14 @@ def build_dataset(useless_th, nb_series, nb_tot, Z_th, method="average", Random=
     if not isinstance(useless_th, int):
         raise Exception("Invalid Threshold.")
 
-    if nb_series > nb_tot:
+    if nb_subject > nb_tot:
         raise Exception(
-            "Cannot pick more series than there is in the dataset.")
+            "Cannot pick more subjects than there is in the dataset.")
 
     LS_path = os.path.join('./', 'LS')
     TS_path = os.path.join('./', 'TS')
     # Select the sensor we keep : (NB : for the moment only average method is built).
-
+    
     missing_array = number_missing()
     # print(f"missing_array = {missing_array}")
     f_indexes = []
@@ -148,17 +168,52 @@ def build_dataset(useless_th, nb_series, nb_tot, Z_th, method="average", Random=
     f_index = 0
     # print(f"f_indexes = {f_indexes}")
 
+    #Getting indexes associated to subjects that are part of training and validation sets. 
+    subject_array = np.loadtxt(os.path.join(LS_path, 'subject_id.txt'))
+    training_indexes = np.array([])
+    validation_indexes = np.array([])
+
+    for i in range(1,nb_tot+1):
+        curr_indexes = get_subject_sensors(subject_array,i)
+        #print(f"Current indexes = {curr_indexes}")
+        if i <= nb_subject:
+            training_indexes = np.append(training_indexes,curr_indexes)
+            #print(training_indexes)
+        else:
+            validation_indexes = np.append(validation_indexes,curr_indexes)
+            #print(validation_indexes)
+    
+    training_indexes = training_indexes.ravel().tolist()
+    validation_indexes = validation_indexes.ravel().tolist()
+    training_indexes.sort()
+    validation_indexes.sort()
+    
+    """print(f"Training indexes : {training_indexes} \n")
+    print(f"Validation indexes : {validation_indexes} \n")
+    print("e")"""
+
     # Build sets and fill missing data :
-    X_train = np.zeros((nb_series, (len(f_indexes)*512)))
-    X_validation = np.zeros((nb_tot - nb_series, (len(f_indexes)*512)))
-    X_test = np.zeros((nb_tot, (len(f_indexes) * 512)))
+
+    X_train = np.zeros((len(training_indexes), (len(f_indexes)*512)))
+    X_validation = np.zeros((len(validation_indexes), (len(f_indexes)*512)))
+    X_test = np.zeros((3500, (len(f_indexes) * 512)))
+
+    y = np.loadtxt(os.path.join(LS_path, 'activity_Id.txt'))
+    y_train = []
+    y_validation = []
+    for j in training_indexes:
+            y_train.append(y[int(j)])
+    for j in validation_indexes:
+            y_validation.append(y[int(j)])
+
+    #print(f"y_train = {y_train} \n\n\n y_validation = {y_validation} \n\n\n")
 
     if method == "average":
         data_array = []
         for f in f_indexes:
             data_curr = np.loadtxt(os.path.join(
                 LS_path, 'LS_sensor_{}.txt'.format(f)))
-            Deal_Outliers.deal_outliers(data_curr, Z_th=5)
+            Deal_Outliers.deal_outliers(data_curr, Z_th=Z_th)
             data_array.append(fill_average(
                 data_curr, [missing_array[f-2][2], missing_array[f-2][3]]))
 
@@ -167,67 +222,30 @@ def build_dataset(useless_th, nb_series, nb_tot, Z_th, method="average", Random=
         for f in f_indexes:
             data_curr = np.loadtxt(os.path.join(
                 LS_path, 'LS_sensor_{}.txt'.format(f)))
-            Deal_Outliers.deal_outliers(data_curr, Z_th=1.3)
+            Deal_Outliers.deal_outliers(data_curr, Z_th=Z_th)
             data_array.append(data_curr)
 
         data_array = fill_knn(data_array)
 
     index = 0
-    if not Random:
-        y_train = np.loadtxt(os.path.join(
-            LS_path, 'activity_Id.txt'))[:nb_series]
-        y_validation = np.loadtxt(os.path.join(
-            LS_path, 'activity_Id.txt'))[nb_series:]
-        for f in f_indexes:
-            print(f"f = {f} \n")
+
+    for f in f_indexes:
+        k = 0 
+        print(f"f = {f} \n")
+        for line_index in training_indexes:
             X_train[:, (index)*512:(index+1) *
-                    512] = data_array[index][:nb_series]
+                        512][k] = data_array[index][int(line_index)]
+            k+=1
+        k = 0 
+        for line_index in validation_indexes:
             X_validation[:, (index)*512:(index+1) *
-                         512] = data_array[index][nb_series:]
-            data = np.loadtxt(os.path.join(
+                             512][k] = data_array[index][int(line_index)]
+            k += 1
+        data = np.loadtxt(os.path.join(
                 TS_path, 'TS_sensor_{}.txt'.format(f)))
-            X_test[:, (index)*512:(index+1)*512] = data
-            index += 1
+        X_test[:, (index)*512:(index+1)*512] = data
+        index += 1
 
-    if Random:
-        y = np.loadtxt(os.path.join(LS_path, 'activity_Id.txt'))
-        train_line = np.random.choice(3500, nb_series, replace=False)
-        train_line = np.sort(train_line)
-        #print(f"Train line : {train_line} \n")
-        validation_line = []
-        y_train = []
-        y_validation = []
-        #print(f"Validation line : {validation_line}")
-        for j in range(3500):
-            if not (j in train_line):
-                validation_line.append(j)
-                y_validation.append(y[j])
-            else:
-                y_train.append(y[j])
-        """print(f"y_train = {y_train} \n")
-        print(f"y_validation = {y_validation}")
-        print(f"Validation line : {validation_line}")"""
-
-        """At this point train_line contains nb_series line indexes and 
-        validation_line nb_tot - nb_series lines indexes."""
-
-        for f in f_indexes:
-            k = 0
-            print(f"f = {f} \n")
-            for line_index in train_line:
-                X_train[:, (index)*512:(index+1) *
-                        512][k] = data_array[index][line_index]
-
-                k += 1
-            k = 0
-            for line_index in validation_line:
-                X_validation[:, (index)*512:(index+1) *
-                             512][k] = data_array[index][line_index]
-                k += 1
-            data = np.loadtxt(os.path.join(
-                TS_path, 'TS_sensor_{}.txt'.format(f)))
-            X_test[:, (index)*512:(index+1)*512] = data
-            index += 1
 
     """print('X_train size: {}.'.format(np.shape(X_train)))
     print('y_train size: {}.'.format(np.shape(y_train)))
@@ -239,151 +257,30 @@ def build_dataset(useless_th, nb_series, nb_tot, Z_th, method="average", Random=
 
 
 if __name__ == '__main__':
-    print("Main file.")
-    # Below parameters will be tuned : 
-    """optimal_array = []
-    #Tuning useless_th: 
-    useless_th_tune = [100,500,3500]
-    optimum_th = 100
-    optimum_score = 0
-    score_av = 0
-
-    for j in useless_th_tune:
-        my_set = build_dataset(j, 1167, 3500, Z_th=2, method="knn_imput", Random=True)
-        X_train = my_set[0]
-        y_train = my_set[1]
-        X_validation = my_set[2]
-        y_validation = my_set[3]
-        X_test = my_set[4]
-        score_array = []
-        for i in range(10):
-            clf = RandomForestClassifier(n_estimators=100, max_features=4)
-            clf.fit(X_train, y_train)
-            y_predict = clf.predict(X_validation)
-            score = accuracy_score(y_predict, y_validation)
-            score_array.append(score)
-            print(f"score = {score} for useless_th = {j}")
-        
-        score_av = np.mean(score_array)
-        print(f"Average score = {score_av} for useless_th = {j}")
-        if score_av > optimum_score:
-            optimum_score = score_av 
-            optimum_th = j 
-
-    optimal_array.append(optimum_th)
-    print("Optimal parameters : \n", optimal_array)
-
-    #tuning Z_th: 
-    Z_th_tune = np.arange(10,21,1)/10 
-    optimum_score = 0
-    optimum_Z_th = 1
-    score_av = 0
-    for j in Z_th_tune:
-        my_set = build_dataset(optimal_array[0], 1167, 3500, Z_th=j, method="knn_imput", Random=True)
-        X_train = my_set[0]
-        y_train = my_set[1]
-        X_validation = my_set[2]
-        y_validation = my_set[3]
-        X_test = my_set[4]
-        score_array = []
-        for i in range(10):    
-            clf = RandomForestClassifier(n_estimators=100, max_features=4)
-            clf.fit(X_train, y_train)
-            y_predict = clf.predict(X_validation)
-            score = accuracy_score(y_predict, y_validation)
-            score_array.append(score)
-            print(f"score = {score} for Z_th = {j}")
-
-        score_av = np.mean(score_array)
-        print(f"Average score = {score_av} for Z_th = {j}")
-        if score_av > optimum_score:
-            optimum_score = score_av 
-            optimum_Z_th = j 
-
-    optimal_array.append(optimum_Z_th)
-    print("Optimal parameters : \n", optimal_array)
-
-    #Tuning max_features : 
-    my_set = build_dataset(optimal_array[0], 1167, 3500, Z_th=optimal_array[1], method="knn_imput", Random=True)
+    my_set = build_dataset(3500,5,5,Z_th=np.inf,method="knn_imput")
     X_train = my_set[0]
     y_train = my_set[1]
     X_validation = my_set[2]
     y_validation = my_set[3]
     X_test = my_set[4]
-
-    max_features_tune = np.arange(1,51)
-    optimum_score = 0
-    optimum_max = 1
-    score_av = 0
-
-    for j in max_features_tune:
-        print("j = ",j)
-        score_array = []
-        for i in range(10):
-            clf = RandomForestClassifier(n_estimators=100, max_features=j)
-            clf.fit(X_train, y_train)
-            y_predict = clf.predict(X_validation)
-            score = accuracy_score(y_predict, y_validation)
-            print(f"score = {score} for max_features = {j}")
-            score_array.append(score)
         
-        score_av = np.mean(score_array)
-        print(f"Average score = {score_av} for max_features = {j}")
-        if score_av > optimum_score:
-            optimum_score = score_av
-            optimum_max = j 
-    
-    optimal_array.append(optimum_max)
-    print("Optimal parameters : \n", optimal_array)"""
+    clf = RandomForestClassifier(n_estimators=1250,max_features=1)
+    clf.fit(X_train,y_train)
+    y_pred = clf.predict(X_test)
+    toy_script.write_submission(y_pred)
+
+           
+    """clf = RandomForestClassifier(n_estimators=1000,max_features=1)
+    clf.fit(X_train,y_train)
+    y_pred = clf.predict(X_test)
+    toy_script.write_submission(y_pred)"""
+
+   
+    # Tuning parameters of the random forest :
+    """param_grid = [{'max_features': np.arange(1, 21), 'criterion': ['gini','entropy','log_loss']}]
+    clf = GridSearchCV(RandomForestClassifier(n_estimators=100), param_grid)
+    clf.fit(X_train, y_train)
+    print(clf.best_params_)
+    grid_predictions = clf.predict(X_validation)
+    print(classification_report(y_validation, grid_predictions))
     """
-    Up to now, the following optimal parameters have been found : 
-    useless_th = 3500 (don't exclude any sensors)
-    Z_th = 1.7 (further tests proved that dealing with outliers actually reduce the accuracy...)
-    max_features = 4 
-
-    Mean score with these parameters (Z_th -> inf) : 95,5 % on validation set. 
-    it remains to analyze other parameters of random forest or to use another algorithm. 
-    
-    """
-    #Write submission. 
-    my_set = build_dataset(3500, 1167, 3500, Z_th=20000000, method="knn_imput", Random=True)
-    X_train = my_set[0]
-    y_train = my_set[1]
-    X_validation = my_set[2]
-    y_validation = my_set[3]
-    X_test = my_set[4]
-    array = []
-
-    for j in range(2,52):
-        clf = RandomForestClassifier(max_features=4, min_samples_split=j)
-        clf.fit(X_train, y_train)
-        y_predict = clf.predict(X_validation)
-        score = accuracy_score(y_predict,y_validation)
-        print(f"score for min_leaf = {j} : {score}")
-        array.append(score)
-        #toy_script.write_submission(y_predict)
-    score_av = np.mean(array)
-    print("average = ", score_av)
-
-    array = []
-    for j in range(500):
-        clf = RandomForestClassifier(max_features=4, min_weight_fraction_leaf=j/100)
-        clf.fit(X_train, y_train)
-        y_predict = clf.predict(X_validation)
-        score = accuracy_score(y_predict,y_validation)
-        print(f"score for min_leaf = {j} : {score}")
-        array.append(score)
-        #toy_script.write_submission(y_predict)
-    score_av = np.mean(array)
-    print("average = ", score_av)
-    aray = []
-    for j in range(500):
-        clf = RandomForestClassifier(max_features=4, min_impurity_decrease=j/1000)
-        clf.fit(X_train, y_train)
-        y_predict = clf.predict(X_validation)
-        score = accuracy_score(y_predict,y_validation)
-        print(f"score for min_leaf = {j} : {score}")
-        array.append(score)
-        #toy_script.write_submission(y_predict)
-    score_av = np.mean(array)
-    print("average = ", score_av)
