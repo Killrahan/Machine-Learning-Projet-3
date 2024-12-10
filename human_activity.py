@@ -129,7 +129,7 @@ def fill_average(dataset, indexes):
     return dataset
 
 
-def build_dataset(useless_th, nb_subject, nb_tot, Z_th, method="average"):
+def build_dataset(useless_th, nb_subject, nb_tot, Z_th,nb_neighbors ,method="average"):
     """
     This function get rid of useless sensors, fill missing time series using either an
     averaging method or KNN_imputation and build the sets X_train, y_train, X_validation
@@ -225,7 +225,7 @@ def build_dataset(useless_th, nb_subject, nb_tot, Z_th, method="average"):
             Deal_Outliers.deal_outliers(data_curr, Z_th=Z_th)
             data_array.append(data_curr)
 
-        data_array = fill_knn(data_array)
+        data_array = fill_knn(data_array,nb_neighbors)
 
     index = 0
 
@@ -257,14 +257,14 @@ def build_dataset(useless_th, nb_subject, nb_tot, Z_th, method="average"):
 
 
 if __name__ == '__main__':
-    my_set = build_dataset(3500,5,5,Z_th=np.inf,method="knn_imput")
+    my_set = build_dataset(3500,5,5,Z_th=np.inf,nb_neighbors=5,method="knn_imput")
     X_train = my_set[0]
     y_train = my_set[1]
     X_validation = my_set[2]
     y_validation = my_set[3]
     X_test = my_set[4]
         
-    clf = RandomForestClassifier(n_estimators=1250,max_features=1)
+    clf = RandomForestClassifier(n_estimators=1500,max_features=1,min_samples_leaf=13)
     clf.fit(X_train,y_train)
     y_pred = clf.predict(X_test)
     toy_script.write_submission(y_pred)
