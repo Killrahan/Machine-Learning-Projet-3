@@ -3,3 +3,4 @@ TS/
 example_submission.csv
 *.pdf
 __pycache__/
+test.py

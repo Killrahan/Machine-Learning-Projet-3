@@ -76,9 +76,15 @@ def set_stat(line):
     array = [np.mean(line), np.var(line), np.min(line), np.max(line), np.max(line) - np.min(line), np.percentile(line, 25), np.percentile(line, 50),
              np.percentile(line, 75), np.percentile(line, 100)]
     fft = np.fft.fft(line)
+    
+    phases = []
 
     for i in fft:
         array.append(np.linalg.norm(i))
+        phases.append(np.angle(i))
+        
+    array.append(phases)
+        
     return array
 
 
