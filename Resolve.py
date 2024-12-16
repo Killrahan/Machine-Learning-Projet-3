@@ -122,7 +122,7 @@ def build_dataset(useless_th, nb_subject, nb_tot, nb_neighbors, method="average"
     # print(f"f_indexes = {f_indexes}")
 
     # Getting indexes associated to subjects that are part of training and validation sets.
-    subject_array = np.loadtxt(os.path.join(LS_path, 'subject_id.txt'))
+    subject_array = np.loadtxt(os.path.join(LS_path, 'subject_Id.txt'))
     training_indexes = np.array([])
     validation_indexes = np.array([])
 
@@ -212,7 +212,59 @@ def build_dataset(useless_th, nb_subject, nb_tot, nb_neighbors, method="average"
 
 
 if __name__ == "__main__":
-    my_set = build_dataset(3500, 5, 5, 13, "knn_imput")
+    
+    score = 0
+    previous_score = -1
+    
+    k = 1
+    
+    while score > previous_score:
+        
+        previous_score = score
+        
+        my_set = build_dataset(3500, 3, 5, k, "knn_imput")
+        X_train = my_set[0]
+        print(np.shape(X_train))
+        y_train = my_set[1]
+        X_validation = my_set[2]
+        print(np.shape(X_validation))
+        y_validation = my_set[3]
+        X_test = my_set[4]
+        clf = RandomForestClassifier()
+        clf.fit(X_train, y_train)
+        
+        score = clf.score(X_validation,y_validation)
+        print("for k = ",k,", score = ",score)
+        
+        k += 10
+        
+    score = 0
+    previous_score = -1
+    
+    k -= 20 # -20 because it was the k before (so we decrease by 10) and we yet increased by another 10
+        
+    while score > previous_score:
+        
+        previous_score = score
+        
+        my_set = build_dataset(3500, 3, 5, k, "knn_imput")
+        X_train = my_set[0]
+        print(np.shape(X_train))
+        y_train = my_set[1]
+        X_validation = my_set[2]
+        print(np.shape(X_validation))
+        y_validation = my_set[3]
+        X_test = my_set[4]
+        clf = RandomForestClassifier()
+        clf.fit(X_train, y_train)
+        
+        score = clf.score(X_validation,y_validation)
+        print("for k = ",k,", score = ",score)
+        
+        k += 1
+      
+
+    my_set = build_dataset(3500, 5, 5, k-2, "knn_imput")
     X_train = my_set[0]
     print(np.shape(X_train))
     y_train = my_set[1]
@@ -220,8 +272,9 @@ if __name__ == "__main__":
     print(np.shape(X_validation))
     y_validation = my_set[3]
     X_test = my_set[4]
-    clf = RandomForestClassifier()
-    clf.fit(X_train, y_train)
+    clf = RandomForestClassifier(n_estimators=1500,n_jobs=None)
+    clf.fit(X_train, y_train)   
+
     y_pred = clf.predict(X_test)
     toy_script.write_submission(y_pred)
     #print(f"accuracy = {accuracy_score(y_pred, y_validation)}")

@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.impute import KNNImputer
 
-def fill(dataset):
+def fill(dataset, n_neighbors):
     """Given a dataset and indexes of missing lines, returns a dataset with filled lines
 
     Args:
@@ -14,7 +14,7 @@ def fill(dataset):
     """
 
     for f in range(len(dataset)):
-        impute = KNNImputer(n_neighbors=1, missing_values=-999999.99)
+        impute = KNNImputer(n_neighbors=n_neighbors, missing_values=-999999.99)
         dataset[f] = impute.fit_transform(dataset[f])
         
     
