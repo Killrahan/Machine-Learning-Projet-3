@@ -2,12 +2,32 @@ import numpy as np
 import os
 
 from Resolve import get_subject_sensors
-from Resolve import set_stat
 
-from knn_imputation import fill as fill_knn
-
-from sklearn.preprocessing import RobustScaler
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.impute import SimpleImputer
+
+def set_stat(line):
+    array = [np.mean(line), np.var(line), np.min(line), np.max(line), np.max(line) - np.min(line), np.percentile(line, 25), np.percentile(line, 50),
+             np.percentile(line, 75), np.percentile(line, 100)]
+    return array
+
+def fill(dataset):
+    """Given a dataset and indexes of missing lines, returns a dataset with filled lines
+
+    Args:
+        dataset (array_like): whole dataset containing all the useful sensors
+        indexes (array_like): indexes[f][2] are fully missing lines in file f, indexes[f][3] are partially missing in file f
+
+    Returns:
+        array_like: the dataset, but with 
+    """
+
+    for f in range(len(dataset)):
+        impute = SimpleImputer(missing_values=-999999.99)
+        dataset[f] = impute.fit_transform(dataset[f])
+        
+    
+    return dataset
 
 
 def build_dataset(nb_tot):
@@ -38,21 +58,21 @@ def build_dataset(nb_tot):
     subject_array = np.loadtxt(os.path.join(LS_path, 'subject_Id.txt'))
     
     # create indexes as a list of empty np arrays
-    indexes = []
+    subject_indexes = []
 
 
-    # indexes[i] contains the indexes of subject_id = i
+    # subject_indexes[i] contains the indexes of subject_id = i
     for i in range(1, nb_tot+1):
         curr_indexes = get_subject_sensors(subject_array, i)
-        indexes.append(curr_indexes)
+        subject_indexes.append(curr_indexes)
 
     # Build sets and fill missing data :
     
     X = []
     for i in range(nb_tot):
-        X.append(np.zeros((len(indexes[i]), (len(f_indexes)*521))))
+        X.append(np.zeros((len(subject_indexes[i]), (len(f_indexes)*9))))
 
-    X_test = np.zeros((3500, (len(f_indexes) * 521)))
+    X_test = np.zeros((3500, (len(f_indexes) * 9)))
 
     y_data = np.loadtxt(os.path.join(LS_path, 'activity_Id.txt'))
     y = []
@@ -60,7 +80,7 @@ def build_dataset(nb_tot):
     # y[i] contains all the elements of activity_id where subject_id = i
     for i in range(nb_tot):
         y_i = []
-        for j in indexes[i]:
+        for j in subject_indexes[i]:
             y_i.append(y_data[int(j)])
         y.append(y_i)
 
@@ -76,29 +96,22 @@ def build_dataset(nb_tot):
         data_array.append(data_curr)
         data_test_array.append(data_curr_test)
 
-    data_array = fill_knn(data_array)
-
-    for i in range(len(data_array)):
-        transformer = RobustScaler().fit(data_array[i])
-        data_curr = transformer.transform(data_array[i])
-        transformer = RobustScaler().fit(data_test_array[i])
-        data_curr = transformer.transform(data_test_array[i])
-
+    data_array = fill(data_array)
 
     for i in range(nb_tot):
         index = 0
         for f in f_indexes:
             k = 0
             print(f"f = {f} \n")
-            for line_index in indexes[i]:
-                X[i][:, (index)*521:(index+1) *
-                        521][k] = set_stat(data_array[index][int(line_index)])
+            for line_index in subject_indexes[i]:
+                X[i][:, (index)*9:(index+1) *
+                        9][k] = set_stat(data_array[index][int(line_index)])
                 k += 1
 
 
             for line in range(3500):
-                X_test[:, (index)*521:(index+1) *
-                        521][line] = set_stat(data_test_array[index][line])
+                X_test[:, (index)*9:(index+1) *
+                        9][line] = set_stat(data_test_array[index][line])
 
             index += 1
 
