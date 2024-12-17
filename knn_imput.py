@@ -7,7 +7,7 @@ from sklearn.preprocessing import RobustScaler
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.impute import KNNImputer
 
-import matplotlib.pyplot as plt
+from toy_script import write_submission
 
 def set_stat(line):
     array = [np.mean(line), np.var(line), np.min(line), np.max(line), np.max(line) - np.min(line), np.percentile(line, 25), np.percentile(line, 50),
@@ -188,21 +188,16 @@ def CV_score(dataset,n_estimators,max_depth,max_features):
         
 if __name__ == "__main__":
     
-    K = np.arange(0,51,10)
-    K[0] = 1
+    dataset = build_dataset(5,3)
+    print(CV_score(dataset,100,None,'sqrt'))
     
-    scores = []
+    X_train = np.concatenate(dataset[0])
+    y_train = np.concatenate(dataset[1])
     
-    for k in K:
-        print(k)
-        dataset = build_dataset(5,k)
-        score_i = CV_score(dataset,100,None,'sqrt')
-        scores.append(score_i)
+    X_test = dataset[2]
     
-    plt.plot(K,scores,label="kNN Imputer")
-    plt.axhline(0.7551,color='k',linestyle = 'dashed',label="Simple Imputer")
-    plt.xlabel("K")
-    plt.ylabel("score")
+    clf = RandomForestClassifier(n_estimators = 1500, n_jobs=-1)
+    clf.fit(X_train,y_train)
     
-    plt.legend()
-    plt.show()
+    y_predict = clf.predict(X_test)
+    write_submission(y_predict)

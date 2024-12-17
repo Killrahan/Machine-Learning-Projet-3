@@ -7,6 +7,8 @@ from sklearn.preprocessing import RobustScaler
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.impute import SimpleImputer
 
+from toy_script import write_submission
+
 def set_stat(line):
     array = [np.mean(line), np.var(line), np.min(line), np.max(line), np.max(line) - np.min(line), np.percentile(line, 25), np.percentile(line, 50),
              np.percentile(line, 75), np.percentile(line, 100)]
@@ -187,3 +189,14 @@ def CV_score(dataset,n_estimators,max_depth,max_features):
 if __name__ == "__main__":
     dataset = build_dataset(5)
     print(CV_score(dataset,100,None,'sqrt'))
+    
+    X_train = np.concatenate(dataset[0])
+    y_train = np.concatenate(dataset[1])
+    
+    X_test = dataset[2]
+    
+    clf = RandomForestClassifier(n_estimators = 1500, n_jobs=-1)
+    clf.fit(X_train,y_train)
+    
+    y_predict = clf.predict(X_test)
+    write_submission(y_predict)

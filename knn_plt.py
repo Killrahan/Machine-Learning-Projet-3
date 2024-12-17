@@ -5,7 +5,9 @@ from Resolve import get_subject_sensors
 
 from sklearn.preprocessing import RobustScaler
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.impute import SimpleImputer
+from sklearn.impute import KNNImputer
+
+import matplotlib.pyplot as plt
 
 def set_stat(line):
     array = [np.mean(line), np.var(line), np.min(line), np.max(line), np.max(line) - np.min(line), np.percentile(line, 25), np.percentile(line, 50),
@@ -17,7 +19,7 @@ def set_stat(line):
     
     return array
 
-def fill(dataset):
+def fill(dataset,n_neighbors):
     """Given a dataset and indexes of missing lines, returns a dataset with filled lines
 
     Args:
@@ -29,14 +31,14 @@ def fill(dataset):
     """
 
     for f in range(len(dataset)):
-        impute = SimpleImputer(missing_values=-999999.99)
+        impute = KNNImputer(n_neighbors=n_neighbors,missing_values=-999999.99)
         dataset[f] = impute.fit_transform(dataset[f])
         
     
     return dataset
 
 
-def build_dataset(nb_tot):
+def build_dataset(nb_tot,n_neighbors):
     """
     This function get rid of useless sensors, fill missing time series using either an
     averaging method or KNN_imputation and build the sets X_train, y_train, X_validation
@@ -102,9 +104,7 @@ def build_dataset(nb_tot):
         data_array.append(data_curr)
         data_test_array.append(data_curr_test)
 
-    data_array = fill(data_array)
-
-    #data_array = fill_knn(data_array)
+    data_array = fill(data_array,n_neighbors)
 
     for i in range(len(data_array)):
         transformer = RobustScaler().fit(data_array[i])
@@ -187,5 +187,22 @@ def CV_score(dataset,n_estimators,max_depth,max_features):
     return np.average(scores)
         
 if __name__ == "__main__":
-    dataset = build_dataset(5)
-    print(CV_score(dataset,100,None,'sqrt'))
+    
+    K = np.arange(0,51,10)
+    K[0] = 1
+    
+    scores = []
+    
+    for k in K:
+        print(k)
+        dataset = build_dataset(5,k)
+        score_i = CV_score(dataset,100,None,'sqrt')
+        scores.append(score_i)
+    
+    plt.plot(K,scores,label="kNN Imputer")
+    plt.axhline(0.7551,color='k',linestyle = 'dashed',label="Simple Imputer")
+    plt.xlabel("K")
+    plt.ylabel("score")
+    
+    plt.legend()
+    plt.show()

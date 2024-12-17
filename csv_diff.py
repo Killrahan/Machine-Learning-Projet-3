@@ -27,6 +27,6 @@ def compare_csv_files(file1, file2):
         print(f"An error occurred: {e}")
 
 # Example usage
-file1 = 'example_submission_1.csv'
+file1 = 'test_labels_sorted.csv'
 file2 = 'example_submission.csv'
 compare_csv_files(file1, file2)

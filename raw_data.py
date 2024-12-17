@@ -4,6 +4,7 @@ import os
 from Resolve import get_subject_sensors
 
 from sklearn.ensemble import RandomForestClassifier
+from toy_script import write_submission
 
 
 def build_dataset(nb_tot):
@@ -149,3 +150,14 @@ def CV_score(dataset,n_estimators,max_depth,max_features):
 if __name__ == "__main__":
     dataset = build_dataset(5)
     print(CV_score(dataset,100,None,'sqrt'))
+    
+    X_train = np.concatenate(dataset[0])
+    y_train = np.concatenate(dataset[1])
+    
+    X_test = dataset[2]
+    
+    clf = RandomForestClassifier(n_estimators = 1500, n_jobs=-1)
+    clf.fit(X_train,y_train)
+    
+    y_predict = clf.predict(X_test)
+    write_submission(y_predict)

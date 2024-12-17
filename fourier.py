@@ -3,9 +3,10 @@ import os
 
 from Resolve import get_subject_sensors
 
-from sklearn.preprocessing import RobustScaler
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.impute import SimpleImputer
+
+from toy_script import write_submission
 
 def set_stat(line):
     array = [np.mean(line), np.var(line), np.min(line), np.max(line), np.max(line) - np.min(line), np.percentile(line, 25), np.percentile(line, 50),
@@ -80,9 +81,9 @@ def build_dataset(nb_tot):
     
     X = []
     for i in range(nb_tot):
-        X.append(np.zeros((len(subject_indexes[i]), (len(f_indexes)*1033))))
+        X.append(np.zeros((len(subject_indexes[i]), (len(f_indexes)*521))))
 
-    X_test = np.zeros((3500, (len(f_indexes) * 1033)))
+    X_test = np.zeros((3500, (len(f_indexes) * 521)))
 
     y_data = np.loadtxt(os.path.join(LS_path, 'activity_Id.txt'))
     y = []
@@ -108,14 +109,6 @@ def build_dataset(nb_tot):
 
     data_array = fill(data_array)
 
-    #data_array = fill_knn(data_array)
-
-    """for i in range(len(data_array)):
-        transformer = RobustScaler().fit(data_array[i])
-        data_curr = transformer.transform(data_array[i])
-        transformer = RobustScaler().fit(data_test_array[i])
-        data_curr = transformer.transform(data_test_array[i])"""
-
 
     for i in range(nb_tot):
         index = 0
@@ -123,14 +116,14 @@ def build_dataset(nb_tot):
             k = 0
             print(f"f = {f} \n")
             for line_index in subject_indexes[i]:
-                X[i][:, (index)*1033:(index+1) *
-                        1033][k] = set_stat(data_array[index][int(line_index)])
+                X[i][:, (index)*521:(index+1) *
+                        521][k] = set_stat(data_array[index][int(line_index)])
                 k += 1
 
 
             for line in range(3500):
-                X_test[:, (index)*1033:(index+1) *
-                        1033][line] = set_stat(data_test_array[index][line])
+                X_test[:, (index)*521:(index+1) *
+                        521][line] = set_stat(data_test_array[index][line])
 
             index += 1
 
@@ -192,4 +185,15 @@ def CV_score(dataset,n_estimators,max_depth,max_features):
         
 if __name__ == "__main__":
     dataset = build_dataset(5)
-    print(CV_score(dataset,100,None,'sqrt'))
+    #print(CV_score(dataset,100,None,'sqrt'))
+    
+    X_train = np.concatenate(dataset[0])
+    y_train = np.concatenate(dataset[1])
+    
+    X_test = dataset[2]
+    
+    clf = RandomForestClassifier(n_estimators = 1500, n_jobs=-1)
+    clf.fit(X_train,y_train)
+    
+    y_predict = clf.predict(X_test)
+    write_submission(y_predict)
