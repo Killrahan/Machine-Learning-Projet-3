@@ -26,7 +26,6 @@ def compare_csv_files(file1, file2):
     except Exception as e:
         print(f"An error occurred: {e}")
 
-# Example usage
 file1 = 'test_labels_sorted.csv'
 file2 = 'example_submission.csv'
 compare_csv_files(file1, file2)
