@@ -13,17 +13,12 @@ from toy_script import write_submission
 
 def build_dataset(nb_tot):
     """
-    This function get rid of useless sensors, fill missing time series using either an
-    averaging method or KNN_imputation and build the sets X_train, y_train, X_validation
-    and y_validation that will be used to assess the model. 
+    This function applies a selected feature engineering method and returns X, y and X_validation, computed from the files
 
     Args : 
-    useless_th : number of missing series require to toss a sensor data. 
-    nb_subject : number of subjects that will be used to create the learning set. 
     nb_tot : number of subjects. 
-    method : method to use to fill the fissing data (average or knn_imput)
 
-    return : [X_train, y_train, X_validation, y_validation]
+    return : [X, y, X_test]
     """
 
     LS_path = os.path.join('./', 'LS')
