@@ -14,7 +14,7 @@ from subjectSplit import SubjectSplit
 
 if __name__ == "__main__":
     
-    # build dataset
+    # build dataset with Simple Imputer, stats and fourier
     dataset = build_dataset(5)
     
     subject_splitter = SubjectSplit(dataset[0])
