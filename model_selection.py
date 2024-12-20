@@ -105,7 +105,7 @@ if __name__ == "__main__":
         'max_features' : ['sqrt','log2',None]
 }
     
-    grid = GridSearchCV(estimator=KNeighborsClassifier(),param_grid=params_grid,cv=subject_splitter,n_jobs=-1)
+    grid = GridSearchCV(estimator=RandomForestClassifier(),param_grid=params_grid,cv=subject_splitter,n_jobs=-1)
     grid.fit(X_train,y_train)
     
     best_param = grid.best_params_
