@@ -42,15 +42,12 @@ def fill(dataset):
 
 def build_dataset(useless_th, nb_tot):
     """
-    This function get rid of useless sensors, fill missing time series using either an
-    averaging method or KNN_imputation and build the sets X_train, y_train, X_validation
-    and y_validation that will be used to assess the model. 
+    This function get rid of useless sensors, fill missing time series using simple imputer
+     method, scale the data using robust scaler and build the sets X, y and X_test.
 
     Args : 
-    useless_th : number of missing series require to toss a sensor data. 
-    nb_subject : number of subjects that will be used to create the learning set. 
-    nb_tot : number of subjects. 
-    method : method to use to fill the fissing data (average or knn_imput)
+    useless_th : number of missing series require to toss a sensor data.  
+    nb_tot : Total number of subjects. 
 
     return : [X_train, y_train, X_validation, y_validation]
     """
