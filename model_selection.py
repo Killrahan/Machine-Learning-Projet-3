@@ -59,8 +59,11 @@ if __name__ == "__main__":
     
     print("DT")
     
+    A = np.arange(1,32).tolist()
+    A.append(None)
+    
     params_grid = {
-        'max_depth' : np.arange(1,32).tolist().append(None)
+        'max_depth' : A
     }
     
     grid = GridSearchCV(estimator=DecisionTreeClassifier(),param_grid=params_grid,cv=subject_splitter,n_jobs=-1)
@@ -94,10 +97,13 @@ if __name__ == "__main__":
     
     print("RFC")
     
+    A = np.arange(1,32).tolist()
+    A.append(None)
+
     params_grid = {
-        'max_depth' : np.arange(1,32).tolist().append(None),
+        'max_depth' : A,
         'max_features' : ['sqrt','log2',None]
-    }
+}
     
     grid = GridSearchCV(estimator=KNeighborsClassifier(),param_grid=params_grid,cv=subject_splitter,n_jobs=-1)
     grid.fit(X_train,y_train)
