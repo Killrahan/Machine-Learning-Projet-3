@@ -49,7 +49,7 @@ def build_dataset(useless_th, nb_tot):
     useless_th : number of missing series require to toss a sensor data.  
     nb_tot : Total number of subjects. 
 
-    return : [X_train, y_train, X_validation, y_validation]
+    return : [X,y,X_test]
     """
 
     LS_path = os.path.join('./', 'LS')
