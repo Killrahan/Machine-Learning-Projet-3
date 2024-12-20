@@ -1,3 +1,8 @@
+"""
+This files uses a fourier transform, statistics and scaling as feature engineering
+It uses knn imputation to fill the data
+"""
+
 import numpy as np
 import os
 
@@ -9,6 +14,7 @@ from sklearn.impute import KNNImputer
 
 from toy_script import write_submission
 
+
 def set_stat(line):
     array = [np.mean(line), np.var(line), np.min(line), np.max(line), np.max(line) - np.min(line), np.percentile(line, 25), np.percentile(line, 50),
              np.percentile(line, 75), np.percentile(line, 100)]
@@ -16,58 +22,48 @@ def set_stat(line):
 
     for i in fft:
         array.append(np.linalg.norm(i))
-    
+
     return array
 
-def fill(dataset,n_neighbors):
-    """Given a dataset and indexes of missing lines, returns a dataset with filled lines
+
+def fill(dataset, n_neighbors):
+    """Given a dataset, returns the dataset with filled lines
 
     Args:
         dataset (array_like): whole dataset containing all the useful sensors
-        indexes (array_like): indexes[f][2] are fully missing lines in file f, indexes[f][3] are partially missing in file f
 
     Returns:
-        array_like: the dataset, but with 
+        array_like: the filled dataset
     """
 
     for f in range(len(dataset)):
-        impute = KNNImputer(n_neighbors=n_neighbors,missing_values=-999999.99)
+        impute = KNNImputer(n_neighbors=n_neighbors, missing_values=-999999.99)
         dataset[f] = impute.fit_transform(dataset[f])
-        
-    
+
     return dataset
 
 
-def build_dataset(nb_tot,n_neighbors):
+def build_dataset(nb_tot, n_neighbors):
     """
-    This function get rid of useless sensors, fill missing time series using either an
-    averaging method or KNN_imputation and build the sets X_train, y_train, X_validation
-    and y_validation that will be used to assess the model. 
+    This function applies a selected feature engineering method and returns X, y and X_validation, computed from the files
 
     Args : 
-    useless_th : number of missing series require to toss a sensor data. 
-    nb_subject : number of subjects that will be used to create the learning set. 
     nb_tot : number of subjects. 
-    method : method to use to fill the fissing data (average or knn_imput)
 
-    return : [X_train, y_train, X_validation, y_validation]
+    return : [X, y, X_test]
     """
-
 
     LS_path = os.path.join('./', 'LS')
     TS_path = os.path.join('./', 'TS')
 
-    
     # equivalent to the for loop in Resolve.py with all sensors kept
-    f_indexes = np.arange(2,33)
-    
+    f_indexes = np.arange(2, 33)
 
     # Getting indexes associated to subjects ids
     subject_array = np.loadtxt(os.path.join(LS_path, 'subject_Id.txt'))
-    
+
     # create indexes as a list of empty np arrays
     subject_indexes = []
-
 
     # subject_indexes[i] contains the indexes of subject_id = i
     for i in range(1, nb_tot+1):
@@ -75,7 +71,7 @@ def build_dataset(nb_tot,n_neighbors):
         subject_indexes.append(curr_indexes)
 
     # Build sets and fill missing data :
-    
+
     X = []
     for i in range(nb_tot):
         X.append(np.zeros((len(subject_indexes[i]), (len(f_indexes)*521))))
@@ -84,7 +80,7 @@ def build_dataset(nb_tot,n_neighbors):
 
     y_data = np.loadtxt(os.path.join(LS_path, 'activity_Id.txt'))
     y = []
-    
+
     # y[i] contains all the elements of activity_id where subject_id = i
     for i in range(nb_tot):
         y_i = []
@@ -92,7 +88,6 @@ def build_dataset(nb_tot,n_neighbors):
             y_i.append(y_data[int(j)])
         y.append(y_i)
 
-    
     # load data from files and preprocess it
     data_array = []
     data_test_array = []
@@ -104,14 +99,13 @@ def build_dataset(nb_tot,n_neighbors):
         data_array.append(data_curr)
         data_test_array.append(data_curr_test)
 
-    data_array = fill(data_array,n_neighbors)
+    data_array = fill(data_array, n_neighbors)
 
     for i in range(len(data_array)):
         transformer = RobustScaler().fit(data_array[i])
         data_curr = transformer.transform(data_array[i])
         transformer = RobustScaler().fit(data_test_array[i])
         data_curr = transformer.transform(data_test_array[i])
-
 
     for i in range(nb_tot):
         index = 0
@@ -120,84 +114,85 @@ def build_dataset(nb_tot,n_neighbors):
             print(f"f = {f} \n")
             for line_index in subject_indexes[i]:
                 X[i][:, (index)*521:(index+1) *
-                        521][k] = set_stat(data_array[index][int(line_index)])
+                     521][k] = set_stat(data_array[index][int(line_index)])
                 k += 1
-
 
             for line in range(3500):
                 X_test[:, (index)*521:(index+1) *
-                        521][line] = set_stat(data_test_array[index][line])
+                       521][line] = set_stat(data_test_array[index][line])
 
             index += 1
 
     return X, y, X_test
 
-def build_subsets(X,y,validation_index,split = True):
-    
+
+def build_subsets(X, y, validation_index, split=True):
+
     X_train = []
     y_train = []
     X_validation = []
     y_validation = []
-    
+
     if split:
         X_validation = np.array(X[validation_index])
         y_validation = np.array(y[validation_index])
-        
-        
+
         for i in range(len(X)):
             if i != validation_index:
                 X_train.append(X[i])
                 y_train.append(y[i])
-                
+
         X_train = np.concatenate([np.array(x) for x in X_train])
         y_train = np.concatenate([np.array(y_i) for y_i in y_train])
-    
+
     else:
         X_train = X
         y_train = y
-        
 
-    return X_train,y_train,X_validation,y_validation
+    return X_train, y_train, X_validation, y_validation
 
-def score(X,y,i,n_estimators,max_depth,max_features):
-    
-    X_train, y_train, X_validation, y_validation = build_subsets(X,y,i)
-    clf = RandomForestClassifier(n_estimators=n_estimators,max_depth=max_depth,max_features=max_features)
-    clf.fit(X_train,y_train)
-    
-    return clf.score(X_validation,y_validation)
 
-def CV_score(dataset,n_estimators,max_depth,max_features):
-    
-    
+def score(X, y, i, n_estimators, max_depth, max_features):
+
+    X_train, y_train, X_validation, y_validation = build_subsets(X, y, i)
+    clf = RandomForestClassifier(
+        n_estimators=n_estimators, max_depth=max_depth, max_features=max_features)
+    clf.fit(X_train, y_train)
+
+    return clf.score(X_validation, y_validation)
+
+
+def CV_score(dataset, n_estimators, max_depth, max_features):
+
     X = dataset[0]
     y = dataset[1]
     X_test = dataset[2]
-    
+
     K = len(X)
-    
+
     scores = np.zeros(K)
-    
+
     for i in range(K):
         print(i)
-        score_i = score(X,y,i,n_estimators,max_depth,max_features)
+        score_i = score(X, y, i, n_estimators, max_depth, max_features)
         scores[i] = score_i
         print(score_i)
-    
+
     return np.average(scores)
-        
+
+
 if __name__ == "__main__":
-    
-    dataset = build_dataset(5,3)
-    print(CV_score(dataset,100,None,'sqrt'))
-    
+
+    dataset = build_dataset(5, 3)
+    print(CV_score(dataset, 100, None, 'sqrt'))
+
     X_train = np.concatenate(dataset[0])
     y_train = np.concatenate(dataset[1])
-    
+
     X_test = dataset[2]
-    
-    clf = RandomForestClassifier(n_estimators = 1500, n_jobs=-1)
-    clf.fit(X_train,y_train)
-    
+
+    clf = RandomForestClassifier(n_estimators=1500, n_jobs=-1)
+    clf.fit(X_train, y_train)
+
     y_predict = clf.predict(X_test)
     write_submission(y_predict)

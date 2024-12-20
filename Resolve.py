@@ -1,3 +1,8 @@
+"""
+This file served as a test file. It was the one we modified to test new things, before we started woring on the report.
+The current version yielded the last results of the competition
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy
@@ -222,10 +227,10 @@ if __name__ == "__main__":
     X_test = my_set[4]
     clf = RandomForestClassifier()
     clf.fit(X_train, y_train)
-    print(clf.score(X_validation,y_validation))
+    print(clf.score(X_validation, y_validation))
     y_pred = clf.predict(X_test)
     toy_script.write_submission(y_pred)
-    #print(f"accuracy = {accuracy_score(y_pred, y_validation)}")
+    # print(f"accuracy = {accuracy_score(y_pred, y_validation)}")
     """opti = 1 
     opti_score = 0.5
     for i in range(10):

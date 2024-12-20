@@ -1,8 +1,13 @@
+"""
+This files provides a class used by GridSearchCV to split out data with respect to subjects
+"""
+
 from sklearn.model_selection import BaseCrossValidator
 import numpy as np
 
+
 class SubjectSplit(BaseCrossValidator):
-    
+
     def __init__(self, dataset):
         """
         Custom splitter for dataset grouped by subjects.
@@ -11,12 +16,12 @@ class SubjectSplit(BaseCrossValidator):
         """
         self.nb_tot = len(dataset)
         self.indexes = []
-        
+
         base = 0
-        
+
         for i in range(self.nb_tot):
             length = len(dataset[i])
-            self.indexes.append(np.arange(base,base+length))
+            self.indexes.append(np.arange(base, base+length))
             base += length
 
     def split(self, X=None, y=None, groups=None):
@@ -27,11 +32,12 @@ class SubjectSplit(BaseCrossValidator):
         """
         for validation_subject in range(self.nb_tot):
             val_idx = self.indexes[validation_subject]
-            
+
             train_idx = np.concatenate(
-                [self.indexes[i] for i in range(self.nb_tot) if i != validation_subject]
+                [self.indexes[i]
+                    for i in range(self.nb_tot) if i != validation_subject]
             )
-            
+
             yield train_idx, val_idx
 
     def get_n_splits(self, X=None, y=None, groups=None):

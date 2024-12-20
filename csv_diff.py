@@ -1,4 +1,9 @@
+"""
+This file is used to compare two different csv files
+"""
+
 import pandas as pd
+
 
 def compare_csv_files(file1, file2):
     try:
@@ -11,7 +16,7 @@ def compare_csv_files(file1, file2):
             print("The files have different dimensions.")
             print(f"File1: {df1.shape}, File2: {df2.shape}")
             return
-        
+
         # Compare the two DataFrames
         comparison = df1.equals(df2)
         if comparison:
@@ -25,6 +30,7 @@ def compare_csv_files(file1, file2):
 
     except Exception as e:
         print(f"An error occurred: {e}")
+
 
 file1 = 'test_labels_sorted.csv'
 file2 = 'example_submission.csv'
